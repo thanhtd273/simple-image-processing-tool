@@ -1,3 +1,3 @@
 **A project of image processing lab** <br/>
-Group: ??? <br/>
+Group: BTS <br/>
 Members: ???
