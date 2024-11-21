@@ -10,6 +10,8 @@ import os
 # Global variables to store images
 original_image = None
 edited_image = None
+
+#Open image from local
 def open_image():
     global original_image
     file_path = filedialog.askopenfilename(
@@ -20,6 +22,7 @@ def open_image():
         # Display in the original image panel
         display_image(original_image, i_label)
 
+# Display image
 def display_image(image, label):
     """Utility function to display an image in a specified label."""
     img = image.copy()
@@ -28,15 +31,37 @@ def display_image(image, label):
     label.config(image=img_tk)
     label.image = img_tk
 
+# Select threshold
+def get_threshold():
+    new_window = tk.Toplevel(root)
+    new_window.geometry("270x100")
+    new_window.title("Type threshold:")
+    entry = tk.Entry(new_window, width=20)
+    entry.pack(pady=10)
+
+    def send_value():
+        try:
+            value = int(entry.get())
+            rm_entry.delete(0, tk.END)
+            rm_entry.insert(0, str(value))
+            new_window.destroy()
+        except ValueError:
+            tk.messagebox.showerror("Error", "Threshold must be integer type!")
+
+    button = tk.Button(new_window, text="Select", command=send_value)
+    button.pack(pady=10)
+
+# Apply filter
 def apply_filter():
     global original_image, edited_image
     if original_image:
-        # Get the selected filter
         selected_filter = filter_var.get()
         edited_image = original_image.copy()
 
         # Apply the selected filter
-        if selected_filter == "Grayscale":
+        if selected_filter == "None":
+            edited_image = original_image.copy() 
+        elif selected_filter == "Grayscale":
             edited_image = ImageOps.grayscale(edited_image)
         elif selected_filter == "Sepia":
             sepia_image = ImageEnhance.Color(edited_image).enhance(0.3)
@@ -44,27 +69,33 @@ def apply_filter():
         elif selected_filter == "Invert":
             edited_image = ImageOps.invert(edited_image.convert("RGB"))
         elif selected_filter == "Gaussian":
-            #edited_image = Image.fromarray(cv2.GaussianBlur(np.array(edited_image), (5, 5), 2))
-            edited_image = gaussian_filter(np.array(edited_image), sigma=2, radius=2)
+            edited_image = Image.fromarray(cv2.GaussianBlur(np.array(edited_image), (5, 5), 2))
         elif selected_filter == "Median":
             edited_image = Image.fromarray(cv2.medianBlur(np.array(edited_image), 5))
-            
+        return edited_image
 
+#Remove background
+def remove_bg():
+    return edited_image
 
-def remove_background():
+#Edge detection
+def edge_detection():
+    return edited_image
+
+#Show result
+def show_output():
     global original_image, edited_image
     if original_image:
-        # Get the selected filter
-        selected_threshold = rm_var.get()
         edited_image = original_image.copy()
-        # Remove BG
-        if selected_threshold == "50":
-            edited_image = Image.fromarray(np.where(cv2.GaussianBlur(np.array(edited_image), (5, 5), 2) > 50, 50, cv2.GaussianBlur(np.array(edited_image), (5, 5), 2)))
-        elif selected_threshold == "100":
-            edited_image = Image.fromarray(np.where(cv2.GaussianBlur(np.array(edited_image), (5, 5), 2) > 100, 100, cv2.GaussianBlur(np.array(edited_image), (5, 5), 2)))
-        elif selected_threshold == "150":
-            edited_image = Image.fromarray(np.where(cv2.GaussianBlur(np.array(edited_image), (5, 5), 2) > 150, 150, cv2.GaussianBlur(np.array(edited_image), (5, 5), 2)))
+        edited_image = apply_filter()
+        #edited_image = remove_background()
+        #edited_image = edge_detection()
+        display_image(edited_image, o_label)
+    else:
+        tk.messagebox.showerror("Error", "Please load an image first!")
 
+
+#-----------------------------------------------------    GUI   -----------------------------------------------------------#
 # Create the main application window
 root = tk.Tk()
 root.title("Simple photoshop")
@@ -84,7 +115,7 @@ filter_label.place(x=125,y=7)
 
 # Dropdown menu Filters
 filter_var = tk.StringVar(value="None")
-filter_menu = tk.OptionMenu(frame, filter_var, "Grayscale", "Sepia", "Invert", "Gaussian", "Median")
+filter_menu = tk.OptionMenu(frame, filter_var, "None", "Grayscale", "Sepia", "Invert", "Gaussian", "Median")
 filter_menu.place(x=160, y=3)
 
 # Label Edge Detection
@@ -93,17 +124,20 @@ ed_label.place(x=260,y=7)
 
 # Dropdown menu Edge Detection
 ed_var = tk.StringVar(value="None")
-ed_menu = tk.OptionMenu(frame, ed_var, "Sobel", "Prewitt", "Robert", "Canny")
+ed_menu = tk.OptionMenu(frame, ed_var, "None", "Sobel", "Prewitt", "Robert", "Canny")
 ed_menu.place(x=350, y=3)
 
 # Label Remove Background
 rm_label = tk.Label(frame, text="Remove BG", bg="lightgrey", font=("Times New Roman", 10))
 rm_label.place(x=450,y=7)
 
-# Dropdown menu Remove Background
-rm_var = tk.StringVar(value="Threshold")
-rm_menu = tk.OptionMenu(frame, rm_var, "50", "100", "150")
-rm_menu.place(x=520, y=3)
+#Entry threshold for Remove BG
+rm_entry = tk.Entry(root, width=4)
+rm_entry.place(x=520,y=7)
+
+# Button select threshold
+rm_button = tk.Button(frame, text="Select", bg="grey", font=("Times New Roman", 6), command=get_threshold)
+rm_button.place(x=555,y=7)
 
 # Label Image Compression 
 ic_label = tk.Label(frame, text="Compress", bg="lightgrey", font=("Times New Roman", 10))
@@ -147,7 +181,7 @@ o_label = tk.Label(right_panel, text="Output show here", font=Font(family="Times
 o_label.place(x=0,y=20)
 
 # Button Apply
-apply_button = tk.Button(frame, text="Apply", bg="grey", font=("Times New Roman", 10))
+apply_button = tk.Button(frame, text="Apply", bg="grey", font=("Times New Roman", 10), command=show_output)
 apply_button.place(x=790,y=470)
 
 # Run the application
