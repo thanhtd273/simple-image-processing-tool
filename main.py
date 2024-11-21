@@ -1,17 +1,15 @@
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
 from tkinter.font import Font
 from PIL import Image, ImageTk, ImageEnhance, ImageOps, ImageFilter
 import numpy as np
 import cv2
-import os
-
 
 # Global variables to store images
 original_image = None
 edited_image = None
 
-#Open image from local
+# Open image from local
 def open_image():
     global original_image
     file_path = filedialog.askopenfilename(
@@ -46,7 +44,7 @@ def get_threshold():
             rm_entry.insert(0, str(value))
             new_window.destroy()
         except ValueError:
-            tk.messagebox.showerror("Error", "Threshold must be integer type!")
+            messagebox.showerror("Error", "Threshold must be integer type!")
 
     button = tk.Button(new_window, text="Select", command=send_value)
     button.pack(pady=10)
@@ -60,7 +58,7 @@ def apply_filter():
 
         # Apply the selected filter
         if selected_filter == "None":
-            edited_image = original_image.copy() 
+            edited_image = original_image.copy()
         elif selected_filter == "Grayscale":
             edited_image = ImageOps.grayscale(edited_image)
         elif selected_filter == "Sepia":
@@ -74,26 +72,103 @@ def apply_filter():
             edited_image = Image.fromarray(cv2.medianBlur(np.array(edited_image), 5))
         return edited_image
 
-#Remove background
-def remove_bg():
-    return edited_image
+# Edge detection functions
 
-#Edge detection
+# Sobel edge detection
+def sobel_edge_detection(img_array):
+    sobel_x = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
+    sobel_y = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+    gx = np.zeros_like(img_array, dtype=np.float32)
+    gy = np.zeros_like(img_array, dtype=np.float32)
+    img_final = np.zeros_like(img_array, dtype=np.uint8)
+
+    for i in range(1, len(img_array) - 1):
+        for j in range(1, len(img_array[0]) - 1):
+            gx[i, j] = (sobel_x * img_array[i-1:i+2, j-1:j+2]).sum()
+            gy[i, j] = (sobel_y * img_array[i-1:i+2, j-1:j+2]).sum()
+            img_final[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
+    return img_final
+
+# Prewitt edge detection
+def prewitt_edge_detection(img_array):
+    prewitt_x = np.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])
+    prewitt_y = np.array([[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
+    gx = np.zeros_like(img_array, dtype=np.float32)
+    gy = np.zeros_like(img_array, dtype=np.float32)
+    img_final = np.zeros_like(img_array, dtype=np.uint8)
+
+    for i in range(1, len(img_array) - 1):
+        for j in range(1, len(img_array[0]) - 1):
+            gx[i, j] = (prewitt_x * img_array[i-1:i+2, j-1:j+2]).sum()
+            gy[i, j] = (prewitt_y * img_array[i-1:i+2, j-1:j+2]).sum()
+            img_final[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
+    return img_final
+
+# Roberts edge detection
+def roberts_edge_detection(img_array):
+    roberts_x = np.array([[1, 0], [0, -1]])
+    roberts_y = np.array([[0, 1], [-1, 0]])
+    gx = np.zeros_like(img_array, dtype=np.float32)
+    gy = np.zeros_like(img_array, dtype=np.float32)
+    img_final = np.zeros_like(img_array, dtype=np.uint8)
+
+    for i in range(len(img_array) - 1):
+        for j in range(len(img_array[0]) - 1):
+            gx[i, j] = (roberts_x * img_array[i:i+2, j:j+2]).sum()
+            gy[i, j] = (roberts_y * img_array[i:i+2, j:j+2]).sum()
+            img_final[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
+    return img_final
+
+def scale_to_0_255(img):
+    min_val = np.min(img)
+    max_val = np.max(img)
+    new_img = (img - min_val) / (max_val - min_val) # 0-1
+    new_img *= 255
+    return new_img
+# Canny edge detection
+def my_canny(img, min_val=100, max_val=200, sobel_size=3, is_L2_gradient=False):
+    smooth_img = cv2.GaussianBlur(img, (5, 5), sigmaX=1, sigmaY=1)
+    Gx = cv2.Sobel(smooth_img, cv2.CV_64F, 1, 0, ksize=sobel_size)
+    Gy = cv2.Sobel(smooth_img, cv2.CV_64F, 0, 1, ksize=sobel_size)
+    edge_gradient = np.sqrt(Gx**2 + Gy**2) if is_L2_gradient else np.abs(Gx) + np.abs(Gy)
+    canny_mask = cv2.Canny(smooth_img, min_val, max_val)
+    return scale_to_0_255(canny_mask)
+
+# Edge detection main function
 def edge_detection():
-    return edited_image
+    global original_image, edited_image
+    if original_image:
+        gray_image = original_image.convert("L")
+        img_array = np.array(gray_image)
 
-#Show result
+        edge_method = ed_var.get()
+        if edge_method == "Sobel":
+            img_result = sobel_edge_detection(img_array)
+        elif edge_method == "Prewitt":
+            img_result = prewitt_edge_detection(img_array)
+        elif edge_method == "Roberts":
+            img_result = roberts_edge_detection(img_array)
+        elif edge_method == "Canny":
+            img_result = my_canny(img_array)
+        else:
+            #messagebox.showinfo("Info", "No edge detection selected.")
+            return
+
+        edited_image = Image.fromarray(img_result)
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")
+
+# Show result
 def show_output():
     global original_image, edited_image
     if original_image:
         edited_image = original_image.copy()
         edited_image = apply_filter()
-        #edited_image = remove_background()
-        #edited_image = edge_detection()
+        edge_detection()  # Added edge detection here
         display_image(edited_image, o_label)
     else:
-        tk.messagebox.showerror("Error", "Please load an image first!")
-
+        messagebox.showerror("Error", "Please load an image first!")
 
 #-----------------------------------------------------    GUI   -----------------------------------------------------------#
 # Create the main application window
@@ -124,7 +199,7 @@ ed_label.place(x=260,y=7)
 
 # Dropdown menu Edge Detection
 ed_var = tk.StringVar(value="None")
-ed_menu = tk.OptionMenu(frame, ed_var, "None", "Sobel", "Prewitt", "Robert", "Canny")
+ed_menu = tk.OptionMenu(frame, ed_var, "None", "Sobel", "Prewitt", "Roberts", "Canny")
 ed_menu.place(x=350, y=3)
 
 # Label Remove Background
@@ -145,7 +220,7 @@ ic_label.place(x=620,y=7)
 
 # Dropdown menu Image Compression
 ic_var = tk.StringVar(value="None")
-ic_menu = tk.OptionMenu(frame, ic_var, "hihi")
+ic_menu = tk.OptionMenu(frame, ic_var, "Jpeg")
 ic_menu.place(x=680, y=3)
 
 # Button Add Image
