@@ -4,6 +4,8 @@ from tkinter.font import Font
 from PIL import Image, ImageTk, ImageEnhance, ImageOps, ImageFilter
 import numpy as np
 import cv2
+from rembg import remove
+
 
 # Global variables to store images
 original_image = None
@@ -27,7 +29,7 @@ def display_image(image, label):
     img.thumbnail((400, 400))  # Resize for display
     img_tk = ImageTk.PhotoImage(img)
     label.config(image=img_tk)
-    label.image = img_tk
+    label.image = img_tk 
 
 # Select threshold
 def get_threshold():
@@ -49,6 +51,26 @@ def get_threshold():
     button = tk.Button(new_window, text="Select", command=send_value)
     button.pack(pady=10)
 
+# Select quality
+def get_quality():
+    new_window = tk.Toplevel(root)
+    new_window.geometry("270x100")
+    new_window.title("Type quality:")
+    entry = tk.Entry(new_window, width=20)
+    entry.pack(pady=10)
+
+    def send_value():
+        try:
+            value = int(entry.get())
+            ic_entry.delete(0, tk.END)
+            ic_entry.insert(0, str(value))
+            new_window.destroy()
+        except ValueError:
+            messagebox.showerror("Error", "Quality must be integer type!")
+
+    button = tk.Button(new_window, text="Select", command=send_value)
+    button.pack(pady=10)
+    
 # Apply filter
 def apply_filter():
     global original_image, edited_image
@@ -151,7 +173,6 @@ def edge_detection():
         elif edge_method == "Canny":
             img_result = my_canny(img_array)
         else:
-            #messagebox.showinfo("Info", "No edge detection selected.")
             return
 
         edited_image = Image.fromarray(img_result)
@@ -159,13 +180,25 @@ def edge_detection():
     else:
         messagebox.showerror("Error", "Please load an image first!")
 
+# Remove background
+def remove_background():
+    global original_image, edited_image
+    if not original_image:
+        messagebox.showerror("Error", "Please load an image first!")
+        return
+    
+    edited_image = remove(original_image)
+    display_image(edited_image, o_label)
+
+# Compress and save the image
+
 # Show result
 def show_output():
     global original_image, edited_image
     if original_image:
         edited_image = original_image.copy()
         edited_image = apply_filter()
-        edge_detection()  # Added edge detection here
+        edge_detection()
         display_image(edited_image, o_label)
     else:
         messagebox.showerror("Error", "Please load an image first!")
@@ -184,6 +217,8 @@ frame.pack(fill="both", expand=True)
 filter_label = tk.Label(frame, text="Choose an action:", bg="lightgrey", font=Font(family="Times New Roman", size=11,weight="bold", slant="italic", underline=1))
 filter_label.place(x=0,y=4)
 
+
+#-----------------------------------------------------    APPLY FILTER COMPONENTS   -----------------------------------------------------------#
 # Label Filter
 filter_label = tk.Label(frame, text="Filter", bg="lightgrey", font=("Times New Roman", 10))
 filter_label.place(x=125,y=7)
@@ -193,6 +228,8 @@ filter_var = tk.StringVar(value="None")
 filter_menu = tk.OptionMenu(frame, filter_var, "None", "Grayscale", "Sepia", "Invert", "Gaussian", "Median")
 filter_menu.place(x=160, y=3)
 
+
+#-----------------------------------------------------    EDGE DETECTION COMPONENTS   -----------------------------------------------------------#
 # Label Edge Detection
 ed_label = tk.Label(frame, text="Edge Detection", bg="lightgrey", font=("Times New Roman", 10))
 ed_label.place(x=260,y=7)
@@ -202,31 +239,27 @@ ed_var = tk.StringVar(value="None")
 ed_menu = tk.OptionMenu(frame, ed_var, "None", "Sobel", "Prewitt", "Roberts", "Canny")
 ed_menu.place(x=350, y=3)
 
-# Label Remove Background
-rm_label = tk.Label(frame, text="Remove BG", bg="lightgrey", font=("Times New Roman", 10))
-rm_label.place(x=450,y=7)
 
-#Entry threshold for Remove BG
-rm_entry = tk.Entry(root, width=4)
-rm_entry.place(x=520,y=7)
+#-----------------------------------------------------    REMOVE BACKGROUND COMPONENTS   -----------------------------------------------------------#
+# Button Apply RB
+apply_button = tk.Button(frame, text="Remove Background", bg="grey", font=("Times New Roman", 10), command=remove_background)
+apply_button.place(x=10,y=470)
 
-# Button select threshold
-rm_button = tk.Button(frame, text="Select", bg="grey", font=("Times New Roman", 6), command=get_threshold)
-rm_button.place(x=555,y=7)
-
+#-----------------------------------------------------    IMAGE COMPRESS COMPONENTS   -----------------------------------------------------------#
 # Label Image Compression 
 ic_label = tk.Label(frame, text="Compress", bg="lightgrey", font=("Times New Roman", 10))
 ic_label.place(x=620,y=7)
 
-# Dropdown menu Image Compression
-ic_var = tk.StringVar(value="None")
-ic_menu = tk.OptionMenu(frame, ic_var, "Jpeg")
-ic_menu.place(x=680, y=3)
+#Entry quality for Image Compression
+ic_entry = tk.Entry(root, width=4)
+ic_entry.place(x=680,y=7)
 
-# Button Add Image
-add_button = tk.Button(frame, text="Add Image +", bg="grey", font=("Times New Roman", 10), command=open_image)
-add_button.place(x=760,y=5)
+# Button select quality
+ic_button = tk.Button(frame, text="Select", bg="grey", font=("Times New Roman", 6), command=get_quality)
+ic_button.place(x=720,y=7)
 
+
+#-----------------------------------------------------    SHOW IMAGE   -----------------------------------------------------------#
 # Create Work Frame
 work_frame = tk.Frame(frame, bd=1, relief="solid", bg="white", width=850, height=430)
 work_frame.place(x=0,y=35)
@@ -254,6 +287,12 @@ edited_label.place(x=170,y=0)
 # Label out Image
 o_label = tk.Label(right_panel, text="Output show here", font=Font(family="Times New Roman", size=10, slant="italic"))
 o_label.place(x=0,y=20)
+
+
+#-----------------------------------------------------    FUNCTION COMPONENTS   -----------------------------------------------------------#
+# Button Add Image
+add_button = tk.Button(frame, text="Add Image +", bg="grey", font=("Times New Roman", 10), command=open_image)
+add_button.place(x=700,y=470)
 
 # Button Apply
 apply_button = tk.Button(frame, text="Apply", bg="grey", font=("Times New Roman", 10), command=show_output)
