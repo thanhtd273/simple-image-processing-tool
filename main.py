@@ -6,7 +6,6 @@ import numpy as np
 import cv2
 from rembg import remove
 
-
 # Global variables to store images
 original_image = None
 edited_image = None
@@ -31,245 +30,214 @@ def display_image(image, label):
     label.config(image=img_tk)
     label.image = img_tk 
 
-# Select threshold
-def get_threshold():
-    new_window = tk.Toplevel(root)
-    new_window.geometry("270x100")
-    new_window.title("Type threshold:")
-    entry = tk.Entry(new_window, width=20)
-    entry.pack(pady=10)
-
-    def send_value():
-        try:
-            value = int(entry.get())
-            rm_entry.delete(0, tk.END)
-            rm_entry.insert(0, str(value))
-            new_window.destroy()
-        except ValueError:
-            messagebox.showerror("Error", "Threshold must be integer type!")
-
-    button = tk.Button(new_window, text="Select", command=send_value)
-    button.pack(pady=10)
-
-# Select quality
-def get_quality():
-    new_window = tk.Toplevel(root)
-    new_window.geometry("270x100")
-    new_window.title("Type quality:")
-    entry = tk.Entry(new_window, width=20)
-    entry.pack(pady=10)
-
-    def send_value():
-        try:
-            value = int(entry.get())
-            ic_entry.delete(0, tk.END)
-            ic_entry.insert(0, str(value))
-            new_window.destroy()
-        except ValueError:
-            messagebox.showerror("Error", "Quality must be integer type!")
-
-    button = tk.Button(new_window, text="Select", command=send_value)
-    button.pack(pady=10)
-    
-# Apply filter
-def apply_filter():
+def undo_all_change():
     global original_image, edited_image
     if original_image:
-        selected_filter = filter_var.get()
         edited_image = original_image.copy()
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")
 
-        # Apply the selected filter
-        if selected_filter == "None":
-            edited_image = original_image.copy()
-        elif selected_filter == "Grayscale":
-            edited_image = ImageOps.grayscale(edited_image)
-        elif selected_filter == "Sepia":
-            sepia_image = ImageEnhance.Color(edited_image).enhance(0.3)
-            edited_image = ImageOps.colorize(sepia_image.convert("L"), "#704214", "#C0A080")
-        elif selected_filter == "Invert":
-            edited_image = ImageOps.invert(edited_image.convert("RGB"))
-        elif selected_filter == "Gaussian":
-            edited_image = Image.fromarray(cv2.GaussianBlur(np.array(edited_image), (5, 5), 2))
-        elif selected_filter == "Median":
-            edited_image = Image.fromarray(cv2.medianBlur(np.array(edited_image), 5))
-        return edited_image
+def gray_filter():
+    global original_image, edited_image
+    if original_image:
+        edited_image = ImageOps.grayscale(original_image)
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")    
 
-# Edge detection functions
+def sepia_filter():
+    global original_image, edited_image
+    if original_image:
+        sepia_image = ImageEnhance.Color(original_image).enhance(0.3)
+        edited_image = ImageOps.colorize(sepia_image.convert("L"), "#704214", "#C0A080")
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!") 
 
-# Sobel edge detection
-def sobel_edge_detection(img_array):
-    sobel_x = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
-    sobel_y = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
-    gx = np.zeros_like(img_array, dtype=np.float32)
-    gy = np.zeros_like(img_array, dtype=np.float32)
-    img_final = np.zeros_like(img_array, dtype=np.uint8)
+def invert_filter():
+    global original_image, edited_image
+    if original_image:
+        edited_image = ImageOps.invert(original_image.convert("RGB"))
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")    
 
-    for i in range(1, len(img_array) - 1):
-        for j in range(1, len(img_array[0]) - 1):
-            gx[i, j] = (sobel_x * img_array[i-1:i+2, j-1:j+2]).sum()
-            gy[i, j] = (sobel_y * img_array[i-1:i+2, j-1:j+2]).sum()
-            img_final[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
-    return img_final
+def gaussian_filter():
+    global original_image, edited_image
+    if original_image:
+        edited_image = Image.fromarray(cv2.GaussianBlur(np.array(original_image), (5, 5), 2))
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")    
 
-# Prewitt edge detection
-def prewitt_edge_detection(img_array):
-    prewitt_x = np.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])
-    prewitt_y = np.array([[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
-    gx = np.zeros_like(img_array, dtype=np.float32)
-    gy = np.zeros_like(img_array, dtype=np.float32)
-    img_final = np.zeros_like(img_array, dtype=np.uint8)
+def median_filter():
+    global original_image, edited_image
+    if original_image:
+        edited_image = Image.fromarray(cv2.medianBlur(np.array(original_image), 5))
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")
 
-    for i in range(1, len(img_array) - 1):
-        for j in range(1, len(img_array[0]) - 1):
-            gx[i, j] = (prewitt_x * img_array[i-1:i+2, j-1:j+2]).sum()
-            gy[i, j] = (prewitt_y * img_array[i-1:i+2, j-1:j+2]).sum()
-            img_final[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
-    return img_final
-
-# Roberts edge detection
-def roberts_edge_detection(img_array):
-    roberts_x = np.array([[1, 0], [0, -1]])
-    roberts_y = np.array([[0, 1], [-1, 0]])
-    gx = np.zeros_like(img_array, dtype=np.float32)
-    gy = np.zeros_like(img_array, dtype=np.float32)
-    img_final = np.zeros_like(img_array, dtype=np.uint8)
-
-    for i in range(len(img_array) - 1):
-        for j in range(len(img_array[0]) - 1):
-            gx[i, j] = (roberts_x * img_array[i:i+2, j:j+2]).sum()
-            gy[i, j] = (roberts_y * img_array[i:i+2, j:j+2]).sum()
-            img_final[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
-    return img_final
-
-def scale_to_0_255(img):
-    min_val = np.min(img)
-    max_val = np.max(img)
-    new_img = (img - min_val) / (max_val - min_val) # 0-1
-    new_img *= 255
-    return new_img
-# Canny edge detection
-def my_canny(img, min_val=100, max_val=200, sobel_size=3, is_L2_gradient=False):
-    smooth_img = cv2.GaussianBlur(img, (5, 5), sigmaX=1, sigmaY=1)
-    Gx = cv2.Sobel(smooth_img, cv2.CV_64F, 1, 0, ksize=sobel_size)
-    Gy = cv2.Sobel(smooth_img, cv2.CV_64F, 0, 1, ksize=sobel_size)
-    edge_gradient = np.sqrt(Gx**2 + Gy**2) if is_L2_gradient else np.abs(Gx) + np.abs(Gy)
-    canny_mask = cv2.Canny(smooth_img, min_val, max_val)
-    return scale_to_0_255(canny_mask)
-
-# Edge detection main function
-def edge_detection():
+def sobel_edge_detection():
     global original_image, edited_image
     if original_image:
         gray_image = original_image.convert("L")
         img_array = np.array(gray_image)
+        sobel_x = np.array([[1, 0, -1], [2, 0, -2], [1, 0, -1]])
+        sobel_y = np.array([[1, 2, 1], [0, 0, 0], [-1, -2, -1]])
+        gx = np.zeros_like(img_array, dtype=np.float32)
+        gy = np.zeros_like(img_array, dtype=np.float32)
+        edited_array = np.zeros_like(img_array, dtype=np.uint8)
 
-        edge_method = ed_var.get()
-        if edge_method == "Sobel":
-            img_result = sobel_edge_detection(img_array)
-        elif edge_method == "Prewitt":
-            img_result = prewitt_edge_detection(img_array)
-        elif edge_method == "Roberts":
-            img_result = roberts_edge_detection(img_array)
-        elif edge_method == "Canny":
-            img_result = my_canny(img_array)
-        else:
-            return
-
-        edited_image = Image.fromarray(img_result)
+        for i in range(1, len(img_array) - 1):
+            for j in range(1, len(img_array[0]) - 1):
+                gx[i, j] = (sobel_x * img_array[i-1:i+2, j-1:j+2]).sum()
+                gy[i, j] = (sobel_y * img_array[i-1:i+2, j-1:j+2]).sum()
+                edited_array[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
+        edited_image = Image.fromarray(edited_array)
         display_image(edited_image, o_label)
     else:
         messagebox.showerror("Error", "Please load an image first!")
 
-# Remove background
-def remove_background():
-    global original_image, edited_image
-    if not original_image:
-        messagebox.showerror("Error", "Please load an image first!")
-        return
-    
-    edited_image = remove(original_image)
-    display_image(edited_image, o_label)
-
-# Compress and save the image
-
-# Show result
-def show_output():
+def prewitt_edge_detection():
     global original_image, edited_image
     if original_image:
-        edited_image = original_image.copy()
-        edited_image = apply_filter()
-        edge_detection()
+        gray_image = original_image.convert("L")
+        img_array = np.array(gray_image)
+        prewitt_x = np.array([[1, 0, -1], [1, 0, -1], [1, 0, -1]])
+        prewitt_y = np.array([[1, 1, 1], [0, 0, 0], [-1, -1, -1]])
+        gx = np.zeros_like(img_array, dtype=np.float32)
+        gy = np.zeros_like(img_array, dtype=np.float32)
+        edited_array = np.zeros_like(img_array, dtype=np.uint8)
+
+        for i in range(1, len(img_array) - 1):
+            for j in range(1, len(img_array[0]) - 1):
+                gx[i, j] = (prewitt_x * img_array[i-1:i+2, j-1:j+2]).sum()
+                gy[i, j] = (prewitt_y * img_array[i-1:i+2, j-1:j+2]).sum()
+                edited_array[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
+        edited_image = Image.fromarray(edited_array)
         display_image(edited_image, o_label)
     else:
         messagebox.showerror("Error", "Please load an image first!")
 
-#-----------------------------------------------------    GUI   -----------------------------------------------------------#
-# Create the main application window
+def roberts_edge_detection():
+    global original_image, edited_image
+    if original_image:
+        gray_image = original_image.convert("L")
+        img_array = np.array(gray_image)
+        roberts_x = np.array([[1, 0], [0, -1]])
+        roberts_y = np.array([[0, 1], [-1, 0]])
+        gx = np.zeros_like(img_array, dtype=np.float32)
+        gy = np.zeros_like(img_array, dtype=np.float32)
+        edited_array = np.zeros_like(img_array, dtype=np.uint8)
+
+        for i in range(len(img_array) - 1):
+            for j in range(len(img_array[0]) - 1):
+                gx[i, j] = (roberts_x * img_array[i:i+2, j:j+2]).sum()
+                gy[i, j] = (roberts_y * img_array[i:i+2, j:j+2]).sum()
+                edited_array[i, j] = min(255, np.sqrt(gx[i, j]**2 + gy[i, j]**2))
+        edited_image = Image.fromarray(edited_array)
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")
+
+def canny_edge_detection():
+    global original_image, edited_image
+    if original_image:
+        gray_image = original_image.convert("L")
+        img_array = np.array(gray_image)
+        smooth_img = cv2.GaussianBlur(img_array, (5, 5), sigmaX=1, sigmaY=1)
+        canny_mask = cv2.Canny(smooth_img, 100, 200)
+        min_val = np.min(canny_mask)
+        max_val = np.max(canny_mask)
+        edited_array = (canny_mask - min_val) / (max_val - min_val)
+        edited_array *= 255
+        edited_image = Image.fromarray(edited_array)
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")
+
+def remove_background():
+    global original_image, edited_image
+    if original_image:
+        edited_image = remove(original_image)
+        display_image(edited_image, o_label)
+    else:
+        messagebox.showerror("Error", "Please load an image first!")
+
+def compress_img():
+    global original_image, edited_image
+    if original_image:
+        quality = tk.simpledialog.askinteger(
+            "Compression Quality", 
+            "Enter the quality percentage (1-100):", 
+            minvalue=1, maxvalue=100
+        )
+        if quality:
+            file_path = filedialog.asksaveasfilename(
+                defaultextension=".jpg", 
+                filetypes=[("JPEG files", "*.jpg")]
+            )
+            if file_path:
+                original_image.save(file_path, "JPEG", quality=quality)
+                edited_image = Image.open(file_path)
+                display_image(edited_image, o_label)
+                messagebox.showinfo("Success", f"Image compressed and saved to {file_path}")
+    else:
+        messagebox.showerror("Error", "Please load an image first!")
+
+
+# Tạo cửa sổ chính
 root = tk.Tk()
-root.title("Simple photoshop")
+root.title("Simple Photoshop")
 root.geometry("850x500")
 
-# Create a split layout using frames
+# Tạo menu bar
+menu_bar = tk.Menu(root)
+
+# Menu File
+file_menu = tk.Menu(menu_bar, tearoff=0)
+file_menu.add_command(label="Add Image", command=open_image)
+file_menu.add_command(label="Undo All Change", command=undo_all_change)
+file_menu.add_command(label="Compress Image", command=compress_img)
+menu_bar.add_cascade(label="File", menu=file_menu)
+
+# Menu Filter
+filter_menu = tk.Menu(menu_bar, tearoff=0)
+filter_menu.add_command(label="Grayscale", command=gray_filter)
+filter_menu.add_command(label="Sephia", command=sepia_filter)
+filter_menu.add_command(label="Invert", command=invert_filter)
+filter_menu.add_command(label="Gaussian", command=gaussian_filter)
+filter_menu.add_command(label="Median", command=median_filter)
+filter_menu.add_separator()
+menu_bar.add_cascade(label="Filter", menu=filter_menu)
+
+# Menu Edge Detection
+ed_menu = tk.Menu(menu_bar, tearoff=0)
+ed_menu.add_command(label="Sobel", command=sobel_edge_detection)
+ed_menu.add_command(label="Prewitt", command=prewitt_edge_detection)
+ed_menu.add_command(label="Robert", command=roberts_edge_detection)
+ed_menu.add_command(label="Canny", command=canny_edge_detection)
+menu_bar.add_cascade(label="Edge Detection", menu=ed_menu)
+
+# Menu View
+rm_menu = tk.Menu(menu_bar, tearoff=0)
+rm_menu.add_command(label="Remove", command=remove_background)
+menu_bar.add_cascade(label="Remove background", menu=rm_menu)
+
+root.config(menu=menu_bar)
+
+# Create Work Frame
 frame = tk.Frame(root, bg="lightgrey")
 frame.pack(fill="both", expand=True)
 
-# Label Name
-filter_label = tk.Label(frame, text="Choose an action:", bg="lightgrey", font=Font(family="Times New Roman", size=11,weight="bold", slant="italic", underline=1))
-filter_label.place(x=0,y=4)
-
-
-#-----------------------------------------------------    APPLY FILTER COMPONENTS   -----------------------------------------------------------#
-# Label Filter
-filter_label = tk.Label(frame, text="Filter", bg="lightgrey", font=("Times New Roman", 10))
-filter_label.place(x=125,y=7)
-
-# Dropdown menu Filters
-filter_var = tk.StringVar(value="None")
-filter_menu = tk.OptionMenu(frame, filter_var, "None", "Grayscale", "Sepia", "Invert", "Gaussian", "Median")
-filter_menu.place(x=160, y=3)
-
-
-#-----------------------------------------------------    EDGE DETECTION COMPONENTS   -----------------------------------------------------------#
-# Label Edge Detection
-ed_label = tk.Label(frame, text="Edge Detection", bg="lightgrey", font=("Times New Roman", 10))
-ed_label.place(x=260,y=7)
-
-# Dropdown menu Edge Detection
-ed_var = tk.StringVar(value="None")
-ed_menu = tk.OptionMenu(frame, ed_var, "None", "Sobel", "Prewitt", "Roberts", "Canny")
-ed_menu.place(x=350, y=3)
-
-
-#-----------------------------------------------------    REMOVE BACKGROUND COMPONENTS   -----------------------------------------------------------#
-# Button Apply RB
-apply_button = tk.Button(frame, text="Remove Background", bg="grey", font=("Times New Roman", 10), command=remove_background)
-apply_button.place(x=10,y=470)
-
-#-----------------------------------------------------    IMAGE COMPRESS COMPONENTS   -----------------------------------------------------------#
-# Label Image Compression 
-ic_label = tk.Label(frame, text="Compress", bg="lightgrey", font=("Times New Roman", 10))
-ic_label.place(x=620,y=7)
-
-#Entry quality for Image Compression
-ic_entry = tk.Entry(root, width=4)
-ic_entry.place(x=680,y=7)
-
-# Button select quality
-ic_button = tk.Button(frame, text="Select", bg="grey", font=("Times New Roman", 6), command=get_quality)
-ic_button.place(x=720,y=7)
-
-
-#-----------------------------------------------------    SHOW IMAGE   -----------------------------------------------------------#
-# Create Work Frame
-work_frame = tk.Frame(frame, bd=1, relief="solid", bg="white", width=850, height=430)
-work_frame.place(x=0,y=35)
-
 # Create the left panel for the original image
-left_panel = tk.Frame(work_frame, bd=1, relief="solid", width=425, height=430)
+left_panel = tk.Frame(frame, bd=1, relief="solid", width=425, height=430)
 left_panel.pack(side="left", fill="both", expand=True)
 
 # Create the right panel for the filtered image
-right_panel = tk.Frame(work_frame, bd=1, relief="solid", width=425, height=430)
+right_panel = tk.Frame(frame, bd=1, relief="solid", width=425, height=430)
 right_panel.pack(side="right", fill="both", expand=True)
 
 # Label Image original
@@ -277,7 +245,7 @@ original_label = tk.Label(left_panel, text="Original Image", bg="lightgrey", fon
 original_label.place(x=170,y=0)
 
 # Label in Image
-i_label = tk.Label(left_panel, text="Input show here", font=Font(family="Times New Roman", size=10, slant="italic"))
+i_label = tk.Label(left_panel, text="Input show here", font=Font(family="Times New Roman", size=10, slant="italic"), fg="grey")
 i_label.place(x=0,y=20)
 
 # Label Image edited 
@@ -285,18 +253,8 @@ edited_label = tk.Label(right_panel, text="Edited Image", bg="lightgrey", font=(
 edited_label.place(x=170,y=0)
 
 # Label out Image
-o_label = tk.Label(right_panel, text="Output show here", font=Font(family="Times New Roman", size=10, slant="italic"))
+o_label = tk.Label(right_panel, text="Output show here", font=Font(family="Times New Roman", size=10, slant="italic"), fg="grey")
 o_label.place(x=0,y=20)
 
-
-#-----------------------------------------------------    FUNCTION COMPONENTS   -----------------------------------------------------------#
-# Button Add Image
-add_button = tk.Button(frame, text="Add Image +", bg="grey", font=("Times New Roman", 10), command=open_image)
-add_button.place(x=700,y=470)
-
-# Button Apply
-apply_button = tk.Button(frame, text="Apply", bg="grey", font=("Times New Roman", 10), command=show_output)
-apply_button.place(x=790,y=470)
-
-# Run the application
+# Run
 root.mainloop()
