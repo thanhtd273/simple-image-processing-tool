@@ -187,6 +187,22 @@ def compress_img():
     else:
         messagebox.showerror("Error", "Please load an image first!")
 
+def save_image():
+    global edited_image
+    if edited_image:
+        file_path = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            filetypes=[("PNG files", "*.png"), ("JPEG files", "*.jpg"), ("BMP files", "*.bmp"), ("All files", "*.*")]
+        )
+        if file_path:
+            try:
+                edited_image.save(file_path)
+                messagebox.showinfo("Success", f"Image saved to {file_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save image:\n{e}")
+    else:
+        messagebox.showerror("Error", "No edited image to save. Please apply a filter or edit an image first!")
+
 
 # Tạo cửa sổ chính
 root = tk.Tk()
@@ -201,6 +217,7 @@ file_menu = tk.Menu(menu_bar, tearoff=0)
 file_menu.add_command(label="Add Image", command=open_image)
 file_menu.add_command(label="Undo All Change", command=undo_all_change)
 file_menu.add_command(label="Compress Image", command=compress_img)
+file_menu.add_command(label="Save Image", command=save_image)
 menu_bar.add_cascade(label="File", menu=file_menu)
 
 # Menu Filter
@@ -210,7 +227,6 @@ filter_menu.add_command(label="Sephia", command=sepia_filter)
 filter_menu.add_command(label="Invert", command=invert_filter)
 filter_menu.add_command(label="Gaussian", command=gaussian_filter)
 filter_menu.add_command(label="Median", command=median_filter)
-filter_menu.add_separator()
 menu_bar.add_cascade(label="Filter", menu=filter_menu)
 
 # Menu Edge Detection
